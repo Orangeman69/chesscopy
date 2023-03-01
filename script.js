@@ -74,7 +74,6 @@ function setMouseBoardCoords(e) {
   let rect = board.getBoundingClientRect();
   let x = e.clientX - rect.left;
   let y = e.clientY - rect.top;
-  console.log(x, y);
   mouseBoardCoords = [x, y];
   mouseBoardSquareCoords = getCoordsRotated(getBoardSquareFromCoords([x, y]));
 }
@@ -135,47 +134,6 @@ function displayPossibleSteps(piece) {
 
 function hidePossibleSteps() {
   possibleStepsElement.innerHTML = "";
-}
-
-function getPawnPossibleSteps({ position, forward, startingPosition, color }) {
-  let possibleSteps = [];
-
-  if (isFreeSquare([position[0], position[1] + forward]))
-    possibleSteps.push([position[0], position[1] + forward]);
-
-  if (
-    ArrayEquals(position, startingPosition) &&
-    isFreeSquare([position[0], position[1] + forward])
-  )
-    possibleSteps.push([position[0], position[1] + forward * 2]);
-
-  if (isEnemyAt([position[0] + forward, position[1] + forward], color))
-    possibleSteps.push([position[0] + forward, position[1] + forward]);
-
-  if (isEnemyAt([position[0] - forward, position[1] + forward], color))
-    possibleSteps.push([position[0] - forward, position[1] + forward]);
-
-  possibleSteps = possibleSteps.filter((s) => isInBounds(s));
-
-  return possibleSteps;
-}
-
-function getKnightPossibleSteps({ position, forward, color }) {
-  let possibleSteps = [];
-  possibleSteps.push([position[0] + forward, position[1] + forward * 2]);
-  possibleSteps.push([position[0] - forward, position[1] + forward * 2]);
-  possibleSteps.push([position[0] + forward * 2, position[1] + forward]);
-  possibleSteps.push([position[0] - forward * 2, position[1] + forward]);
-
-  possibleSteps.push([position[0] + forward, position[1] - forward * 2]);
-  possibleSteps.push([position[0] - forward, position[1] - forward * 2]);
-  possibleSteps.push([position[0] + forward * 2, position[1] - forward]);
-  possibleSteps.push([position[0] - forward * 2, position[1] - forward]);
-
-  possibleSteps = possibleSteps.filter(
-    (s) => isInBounds(s) && !isFriendlyAt(s, color)
-  );
-  return possibleSteps;
 }
 
 function getRookPossibleSteps({ position, forward, color }) {
@@ -254,32 +212,6 @@ function getBishopPossibleSteps({ position, forward, color }) {
   return possibleSteps;
 }
 
-function getKingPossibleSteps(piece) {
-  const { position, forward, color } = piece;
-
-  let possibleSteps = [];
-  possibleSteps.push([position[0] + forward, position[1] + forward]);
-  possibleSteps.push([position[0] - forward, position[1] - forward]);
-  possibleSteps.push([position[0] + forward, position[1] - forward]);
-  possibleSteps.push([position[0] - forward, position[1] + forward]);
-  possibleSteps.push([position[0], position[1] + forward]);
-  possibleSteps.push([position[0], position[1] - forward]);
-  possibleSteps.push([position[0] + forward, position[1]]);
-  possibleSteps.push([position[0] - forward, position[1]]);
-  //0-0-0
-  if (piece.canCastleLong()) {
-    possibleSteps.push(piece.castleLongCoords);
-  }
-  //0-0
-  if (piece.canCastleShort()) {
-    possibleSteps.push(piece.castleShortCoords);
-  }
-  possibleSteps = possibleSteps.filter(
-    (s) => isInBounds(s) && !isFriendlyAt(s, color)
-  );
-  return possibleSteps;
-}
-
 class Piece {
   constructor(type, color, startingPositionNOTATION) {
     this.id = `${color}${startingPositionNOTATION[0]}${
@@ -290,18 +222,7 @@ class Piece {
     this.forward = color === "w" ? -1 : 1;
     this.position = getCoordsFromNotation(startingPositionNOTATION);
     this.startingPosition = this.position;
-    this.canBeEnPassanted = false;
     this.moved = false;
-    this.castleShortCoords =
-      this.type === "king"
-        ? [this.startingPosition[0] + 2, this.startingPosition[1]]
-        : [];
-
-    this.castleLongCoords =
-      this.type === "king"
-        ? [this.startingPosition[0] - 2, this.startingPosition[1]]
-        : [];
-
     this.createHtmlElement();
   }
 
@@ -354,7 +275,105 @@ class Piece {
     pieces = pieces.filter((p) => p !== enemyPiece);
     enemyPiece.htmlElement.style.display = "none";
   }
+}
 
+class Pawn extends Piece {
+  constructor(type, color, startingPositionNOTATION) {
+    super(type, color, startingPositionNOTATION);
+  }
+
+  getPossibleSteps() {
+    const { position, forward, startingPosition, color } = this;
+    let possibleSteps = [];
+
+    if (isFreeSquare([position[0], position[1] + forward]))
+      possibleSteps.push([position[0], position[1] + forward]);
+
+    if (
+      ArrayEquals(position, startingPosition) &&
+      isFreeSquare([position[0], position[1] + forward])
+    )
+      possibleSteps.push([position[0], position[1] + forward * 2]);
+
+    if (isEnemyAt([position[0] + forward, position[1] + forward], color))
+      possibleSteps.push([position[0] + forward, position[1] + forward]);
+
+    if (isEnemyAt([position[0] - forward, position[1] + forward], color))
+      possibleSteps.push([position[0] - forward, position[1] + forward]);
+
+    possibleSteps = possibleSteps.filter((s) => isInBounds(s));
+
+    return possibleSteps;
+  }
+}
+
+class Rook extends Piece {
+  constructor(type, color, startingPositionNOTATION) {
+    super(type, color, startingPositionNOTATION);
+  }
+
+  getPossibleSteps() {
+    return getRookPossibleSteps(this);
+  }
+}
+
+class Knight extends Piece {
+  constructor(type, color, startingPositionNOTATION) {
+    super(type, color, startingPositionNOTATION);
+  }
+
+  getPossibleSteps() {
+    const { position, forward, color } = this;
+    let possibleSteps = [];
+    possibleSteps.push([position[0] + forward, position[1] + forward * 2]);
+    possibleSteps.push([position[0] - forward, position[1] + forward * 2]);
+    possibleSteps.push([position[0] + forward * 2, position[1] + forward]);
+    possibleSteps.push([position[0] - forward * 2, position[1] + forward]);
+
+    possibleSteps.push([position[0] + forward, position[1] - forward * 2]);
+    possibleSteps.push([position[0] - forward, position[1] - forward * 2]);
+    possibleSteps.push([position[0] + forward * 2, position[1] - forward]);
+    possibleSteps.push([position[0] - forward * 2, position[1] - forward]);
+
+    possibleSteps = possibleSteps.filter(
+      (s) => isInBounds(s) && !isFriendlyAt(s, color)
+    );
+    return possibleSteps;
+  }
+}
+
+class Bishop extends Piece {
+  constructor(type, color, startingPositionNOTATION) {
+    super(type, color, startingPositionNOTATION);
+  }
+
+  getPossibleSteps() {
+    return getBishopPossibleSteps(this);
+  }
+}
+
+class Queen extends Piece {
+  constructor(type, color, startingPositionNOTATION) {
+    super(type, color, startingPositionNOTATION);
+  }
+  getPossibleSteps() {
+    return [...getBishopPossibleSteps(this), ...getRookPossibleSteps(this)];
+  }
+}
+
+class King extends Piece {
+  constructor(type, color, startingPositionNOTATION) {
+    super(type, color, startingPositionNOTATION);
+    this.castleShortCoords = [
+      this.startingPosition[0] + 2,
+      this.startingPosition[1],
+    ];
+
+    this.castleLongCoords = [
+      this.startingPosition[0] - 2,
+      this.startingPosition[1],
+    ];
+  }
   castle(short = false) {
     if (short) {
       let hRook = pieces.filter((p) => p.id === this.color + "hR");
@@ -405,47 +424,54 @@ class Piece {
   }
 
   getPossibleSteps() {
+    const { position, forward, color } = this;
+
     let possibleSteps = [];
-    switch (this.type) {
-      case "pawn":
-        return getPawnPossibleSteps(this);
-      case "knight":
-        return getKnightPossibleSteps(this);
-      case "rook":
-        return getRookPossibleSteps(this);
-      case "bishop":
-        return getBishopPossibleSteps(this);
-      case "queen":
-        return [...getBishopPossibleSteps(this), ...getRookPossibleSteps(this)];
-      case "king":
-        return getKingPossibleSteps(this);
+    possibleSteps.push([position[0] + forward, position[1] + forward]);
+    possibleSteps.push([position[0] - forward, position[1] - forward]);
+    possibleSteps.push([position[0] + forward, position[1] - forward]);
+    possibleSteps.push([position[0] - forward, position[1] + forward]);
+    possibleSteps.push([position[0], position[1] + forward]);
+    possibleSteps.push([position[0], position[1] - forward]);
+    possibleSteps.push([position[0] + forward, position[1]]);
+    possibleSteps.push([position[0] - forward, position[1]]);
+    //0-0-0
+    if (this.canCastleLong()) {
+      possibleSteps.push(this.castleLongCoords);
     }
+    //0-0
+    if (this.canCastleShort()) {
+      possibleSteps.push(this.castleShortCoords);
+    }
+    possibleSteps = possibleSteps.filter(
+      (s) => isInBounds(s) && !isFriendlyAt(s, color)
+    );
     return possibleSteps;
   }
 }
 
 function getDefaultPieces() {
   let pieces = [
-    new Piece("king", "w", "e1"),
-    new Piece("queen", "w", "d1"),
-    new Piece("bishop", "w", "c1"),
-    new Piece("bishop", "w", "f1"),
-    new Piece("knight", "w", "b1"),
-    new Piece("knight", "w", "g1"),
-    new Piece("rook", "w", "a1"),
-    new Piece("rook", "w", "h1"),
-    new Piece("king", "b", "e8"),
-    new Piece("queen", "b", "d8"),
-    new Piece("bishop", "b", "c8"),
-    new Piece("bishop", "b", "f8"),
-    new Piece("knight", "b", "b8"),
-    new Piece("knight", "b", "g8"),
-    new Piece("rook", "b", "a8"),
-    new Piece("rook", "b", "h8"),
+    new King("king", "w", "e1"),
+    new Queen("queen", "w", "d1"),
+    new Bishop("bishop", "w", "c1"),
+    new Bishop("bishop", "w", "f1"),
+    new Knight("knight", "w", "b1"),
+    new Knight("knight", "w", "g1"),
+    new Rook("rook", "w", "a1"),
+    new Rook("rook", "w", "h1"),
+    new King("king", "b", "e8"),
+    new Queen("queen", "b", "d8"),
+    new Bishop("bishop", "b", "c8"),
+    new Bishop("bishop", "b", "f8"),
+    new Knight("knight", "b", "b8"),
+    new Knight("knight", "b", "g8"),
+    new Rook("rook", "b", "a8"),
+    new Rook("rook", "b", "h8"),
   ];
   for (let i = 0; i < 8; i++) {
-    pieces.push(new Piece("pawn", "w", `${String.fromCharCode(97 + i)}2`));
-    pieces.push(new Piece("pawn", "b", `${String.fromCharCode(97 + i)}7`));
+    pieces.push(new Pawn("pawn", "w", `${String.fromCharCode(97 + i)}2`));
+    pieces.push(new Pawn("pawn", "b", `${String.fromCharCode(97 + i)}7`));
   }
   return pieces;
 }
@@ -488,6 +514,7 @@ window.addEventListener("mouseup", (e) => {
         return;
       }
       if (
+        followingCursorPiece instanceof King &&
         followingCursorPiece.canCastleLong() &&
         ArrayEquals(
           followingCursorPiece.castleLongCoords,
@@ -500,7 +527,8 @@ window.addEventListener("mouseup", (e) => {
       }
 
       if (
-        followingCursorPiece.canCastleShort() &&
+        followingCursorPiece instanceof King &&
+        followingCursorPiece?.canCastleShort() &&
         ArrayEquals(
           followingCursorPiece.castleShortCoords,
           mouseBoardSquareCoords
